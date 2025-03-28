@@ -1,0 +1,101 @@
+#IMPORTS
+import os, sys
+import pandas as pd
+import numpy as np
+import seaborn as sns
+# import tensorflow as tf
+# import math
+from math import sqrt
+from datetime import date, datetime
+from matplotlib import pyplot as plt
+%matplotlib inline
+
+from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+import xgboost as xgb
+
+from statsmodels.tsa.arima.model import ARIMA
+
+#FUNCTIONS
+def get_average_duration(cycle_df):
+    """
+    Calculates and returns the average period and cycle lengths
+    """
+    ave_period_length = cycle_df.loc[-6:, "period_length"].mean()
+    ave_period_length = round(ave_period_length)
+    ave_cycle_length = cycle_df.loc[-6:, "cycle_length"].mean()
+    ave_cycle_length = round(ave_cycle_length)
+    
+    return ave_period_length, ave_cycle_length
+
+#DATA IMPORT
+cycle_df = pd.read_csv(r"C:\Users\path.csv", parse_dates=True)  # edit the data path to your csv with data
+
+cycle_df['actual_period_start'] = pd.to_datetime(cycle_df['actual_period_start'])
+cycle_df['actual_period_end'] = pd.to_datetime(cycle_df['actual_period_end'])
+cycle_df['est_ovulation'] = pd.to_datetime(cycle_df['est_ovulation'])
+
+short_date_list = []
+
+for i in range(len(cycle_df)):
+    period_start_str = cycle_df['actual_period_start'][i].strftime('%Y-%m-%d')
+    short_date = period_start_str.split("-")[1] + "-" + period_start_str.split("-")[2]
+    short_date_list.append(short_date)
+    
+cycle_df['period_start_short_date'] = short_date_list
+
+cycle_df["period_length"] = cycle_df.apply(
+    lambda x: (x["actual_period_end"] - x["actual_period_start"]), axis=1)
+
+cycle_df["period_length"] = ((cycle_df["period_length"]).dt.days)+1
+
+cycle_df["cycle_length"] = cycle_df['actual_period_start'].diff()
+
+cycle_df["cycle_length"] = cycle_df.cycle_length.shift(-1)
+
+cycle_df["cycle_length"] = ((cycle_df["cycle_length"]).dt.days)
+
+ave_period_length, ave_cycle_length = get_average_duration(cycle_df)
+
+print("average period length: " + str(ave_period_length))
+print("average cycle length: " + str(ave_cycle_length))
+
+cycle_df = cycle_df.drop(columns=["user", "est_ovulation", "period_start_short_date"])
+
+six_cycle_df = cycle_df.iloc[-7:-1]
+ave_period_length_6, ave_cycle_length_6 = get_average_duration(six_cycle_df)
+
+print("average period length: " + str(ave_period_length_6))
+print("average cycle length: " + str(ave_cycle_length_6))
+
+#ARIMA MODEL
+arima_series = cycle_df.copy()
+
+# split into train and test sets
+X = arima_series.values
+size = int(len(X) * 0.66)
+train, test = X[0:size], X[size:len(X)]
+history = [x for x in train]
+predictions = list()
+
+# walk-forward validation
+for t in range(len(test)):
+    model = ARIMA(history, order=(5,1,0))
+    model_fit = model.fit()
+    output = model_fit.forecast()
+    yhat = output[0]
+    predictions.append(yhat)
+    obs = test[t]
+    history.append(obs)
+    print('predicted=%f, expected=%f' % (yhat, obs))
+    
+# evaluate forecasts
+rmse = sqrt(mean_squared_error(test, predictions))
+print('Test RMSE: %.3f' % rmse)
+
+# plot forecasts against actual outcomes
+pyplot.plot(test)
+pyplot.plot(predictions, color='red')
+pyplot.show()
