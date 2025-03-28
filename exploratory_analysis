@@ -1,0 +1,103 @@
+# IMPORTS
+import json
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import os.path
+import datetime
+import warnings
+warnings.filterwarnings(action='ignore')
+
+# PULL DATA 
+research_id = "anon"
+environment = "prod"
+data_dir = f""
+os.listdir(data_dir)
+
+for year in os.listdir(data_dir):
+    for month in os.listdir(os.path.join(data_dir, year)):
+        print(month)
+        for day in os.listdir(os.path.join(data_dir, year, month)):
+            print(day, month, year)
+
+folder = os.path.join(data_dir, '2022', '02', '28')
+os.listdir(folder)
+
+file1 = os.path.join(folder, 'anon.json')
+with open(file1, 'r') as openfile:
+    # Reading from json file
+    json_object = json.load(openfile)
+    
+df = pd.DataFrame(json_object['models']['adm_v0']['input']['tsd_set'])
+df.set_index('timestamp', inplace=True)
+df.index = pd.to_datetime((df.index * 1e9).astype(int))
+
+df.plot(secondary_y='averageBreathingRate', figsize=(12, 4), marker=".")
+
+data_list = []
+folder = os.path.join(data_dir, '2022', '02', '18')
+file = os.path.join(folder, os.listdir(folder)[0])
+with open(file, 'r') as openfile:
+    json_object = json.load(openfile)
+    
+df = pd.DataFrame(json_object['models']['adm_v0']['input']['tsd_set'])
+df.set_index('timestamp', inplace=True)
+df.index = pd.to_datetime((df.index * 1e9).astype(int))
+data_list.append(df)
+df.plot(secondary_y='averageBreathingRate', figsize=(12, 4), marker=".")
+
+folder = os.path.join(data_dir, '2022', '03', '18')
+file = os.path.join(folder, os.listdir(folder)[0])
+with open(file, 'r') as openfile:
+    json_object = json.load(openfile)
+    
+df = pd.DataFrame(json_object['models']['adm_v0']['input']['tsd_set'])
+df.set_index('timestamp', inplace=True)
+df.index = pd.to_datetime((df.index * 1e9).astype(int))
+data_list.append(df)
+df.plot(secondary_y='averageBreathingRate', figsize=(12, 4), marker=".")
+
+folder = os.path.join(data_dir, '2022', '04', '15')
+file = os.path.join(folder, os.listdir(folder)[0])
+with open(file, 'r') as openfile:
+    json_object = json.load(openfile)
+    
+df = pd.DataFrame(json_object['models']['adm_v0']['input']['tsd_set'])
+df.set_index('timestamp', inplace=True)
+df.index = pd.to_datetime((df.index * 1e9).astype(int))
+data_list.append(df)
+
+df.plot(secondary_y='averageBreathingRate', figsize=(12, 4), marker=".")
+
+dates = {'ovulation': ["2022-02-11", "2022-03-09", "2022-04-04", "2022-05-01"], 
+         'periods': [["2022-01-26", "2022-01-31"], ["2022-02-26", "2022-03-03"], ["2022-03-24", "2022-03-29"], ["2022-04-19", "2022-04-24"]]}
+
+research_id = "anon"
+environment = "prod"
+data_dir = f""
+
+data_list = []
+for month in os.listdir(os.path.join(data_dir, '2022')):
+    for day in os.listdir(os.path.join(data_dir, '2022', month)):
+        
+        folder = os.path.join(data_dir, '2022', month, day)
+        file = os.path.join(folder, os.listdir(folder)[0])
+        with open(file, 'r') as openfile:
+            json_object = json.load(openfile)
+    
+        df = pd.DataFrame(json_object['models']['adm_v0']['input']['tsd_set'])
+        df.set_index('timestamp', inplace=True)
+        df.index = pd.to_datetime((df.index * 1e9).astype(int))
+        data_list.append(df)
+
+df = pd.concat(data_list)
+ax = df.plot(secondary_y='averageBreathingRate', figsize=(12, 4), marker=".")
+
+for o in dates['ovulation']:
+    ax.vlines(o, 50, 90, color="green", linestyle="--")
+
+for p in dates['periods']:
+    y1 = [90, 90]
+    y2 = [50, 50]
+    ax.fill_between(p, y2, y1, color='pink')
